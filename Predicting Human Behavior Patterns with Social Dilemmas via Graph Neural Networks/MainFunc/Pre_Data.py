@@ -24,6 +24,16 @@ class RnnDataSet(Dataset):
         return self.dataset[idx], self.labels[idx]
 
 
+# T_M_I_F_E
+def t_m_i_f_e(A_mat, marg_t):
+    n = len(marg_t)
+    Delta_mat = np.zeros([n, n])
+    for i in range(n):
+        for j in range(n):
+            Delta_mat[i, j] = np.abs(marg_t[i]-marg_t[j])
+    return np.multiply(A_mat, Delta_mat)
+
+
 # Networks Structure & Build GNN DataLoader
 class Nets:
     def __init__(self, N: int, deg_k: int):
@@ -46,7 +56,7 @@ class Nets:
         mask[idx] = 1
         return torch.as_tensor(mask, dtype=torch.bool)
 
-    # TODO: 此处节点特征X默认为邻接矩阵，后期可以自由加入节点特征矩阵
+    # 特征编码方式：默认用邻接矩阵、T_M_I_F_E、comb
     def graph_data_set(self, Feature_type, G: nx.Graph, Label_t, Margin_t):
         edge_lst = []
         for i in range(self.N):
@@ -56,6 +66,11 @@ class Nets:
         if Feature_type == "comb":
             Adj = nx.to_numpy_array(G)
             Mar_adj = np.c_[Adj, Margin_t]
+            x = torch.tensor(Mar_adj, dtype=torch.float32)
+        elif Feature_type == "T_M_I_F_E":
+            Adj = nx.to_numpy_array(G)
+            Adj_t_m_i_f_e = t_m_i_f_e(Adj, Margin_t)
+            Mar_adj = np.c_[Adj_t_m_i_f_e, Margin_t]
             x = torch.tensor(Mar_adj, dtype=torch.float32)
         else:
             x = torch.tensor(nx.to_numpy_array(G), dtype=torch.float32)
